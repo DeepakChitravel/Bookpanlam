@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Test PayU Payment</h2>
+<form method="POST" action="https://test.payu.in/_payment">
+    <input type="hidden" name="key" value="gtKFFx" />
+    <input type="hidden" name="txnid" value="TEST<?php echo time(); ?>" />
+    <input type="hidden" name="amount" value="100.00" />
+    <input type="hidden" name="productinfo" value="Test Payment" />
+    <input type="hidden" name="firstname" value="Test User" />
+    <input type="hidden" name="email" value="test@example.com" />
+    <input type="hidden" name="phone" value="9999999999" />
+    <input type="hidden" name="surl" value="https://web.bookpanlam.com/payment-success" />
+    <input type="hidden" name="furl" value="https://web.bookpanlam.com/payment-failed" />
+    <input type="hidden" name="hash" value="" id="hashField" />
+    <input type="hidden" name="service_provider" value="payu_paisa" />
+    
+    <button type="submit">Test PayU</button>
+</form>
+
+<script>
+// Calculate hash
+const key = "gtKFFx";
+const salt = "4R38IvwiV57FwVpsgOvTXBdLE4tHUXFW";
+const txnid = document.querySelector('[name="txnid"]').value;
+const amount = "100.00";
+const productinfo = "Test Payment";
+const firstname = "Test User";
+const email = "test@example.com";
+
+// PayU hash format: key|txnid|amount|productinfo|firstname|email|||||||||||salt
+const hashString = key + '|' + txnid + '|' + amount + '|' + productinfo + '|' + 
+                  firstname + '|' + email + '|||||||||||' + salt;
+
+console.log("Hash String:", hashString);
+
+// Calculate SHA512 hash
+async function calculateHash() {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(hashString);
+    const hashBuffer = await crypto.subtle.digest('SHA-512', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    document.getElementById('hashField').value = hashHex;
+    console.log("Generated Hash:", hashHex);
+}
+
+calculateHash();
+</script>
+</body>
+</html>

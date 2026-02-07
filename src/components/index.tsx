@@ -1,0 +1,10 @@
+export { Button } from "@/templates/1/components/ui/button";
+export { default as Navbar } from "@/templates/1/components/shared/navbar";
+export { default as Footer } from "@/templates/1/components/shared/footer";
+export { default as Home } from "@/templates/1/pages/homepage";
+export { default as Booking } from "@/templates/1/pages/booking";
+export { default as Service } from "@/templates/1/pages/service";
+export { default as Services } from "@/templates/1/pages/services";
+export { default as Profile } from "@/templates/1/pages/profile";
+export { default as LoginDialog } from "@/templates/1/components/dialogs/login";
+export { default as RegisterDialog } from "@/templates/1/components/dialogs/register";
