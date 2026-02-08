@@ -3,12 +3,12 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "manager.bookpanlam.com",
+        protocol: "http",
+        hostname: "manager.bookpanlam",
         pathname: "/public/uploads/**",
       },
       {
-        protocol: "https",
+        protocol: "http",
         hostname: "localhost",
         pathname: "/**",
       },
