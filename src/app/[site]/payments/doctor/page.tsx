@@ -311,7 +311,7 @@ export default function PaymentsPage() {
 
     try {
       // Create UPI payment order first
-      const phpBaseUrl = "https://manager.bookpanlam.com/public";
+      const phpBaseUrl = "http://localhost/manager.bookpanlam/public";
       const upiUrl = `${phpBaseUrl}/customers/payment/upi-payment.php`;
 
       const upiData = {
@@ -750,7 +750,7 @@ export default function PaymentsPage() {
     try {
       setIsProcessing(true);
 
-      const phpBaseUrl = "https://manager.bookpanlam.com/public";
+      const phpBaseUrl = "http://localhost/manager.bookpanlam/public";
       const cohUrl = `${phpBaseUrl}/customers/payment/create-coh-order.php`;
 
       console.log("🟡 COH URL:", cohUrl);

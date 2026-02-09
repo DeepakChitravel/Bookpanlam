@@ -7,7 +7,7 @@ import { apiUrl } from "@/config";
  * Axios instance (client-safe)
  */
 const api = axios.create({
-  baseURL: apiUrl, // e.g. https://manager.bookpanlam.com/public
+  baseURL: apiUrl, // e.g. http://localhost/manager.bookpanlam/public
   headers: {
     "Content-Type": "application/json",
   },
