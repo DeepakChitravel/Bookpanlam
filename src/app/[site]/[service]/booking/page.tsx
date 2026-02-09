@@ -10,7 +10,9 @@ const Page = async ({
   const service = await getService(params.site, params.service);
   if (!service) return notFound();
 
+
+  
   return <Booking serviceData={service} />;
 };
-
+//deepak
 export default Page;
