@@ -392,6 +392,8 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
                           <Image
                             src={`${uploadsUrl}/${department.image}`}
                             alt={department.name}
+                            width={400}
+  height={300}
                             className="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm"
                           />
                         )}
