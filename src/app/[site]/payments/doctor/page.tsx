@@ -17,7 +17,6 @@ import {
   verifyPayUPayment
 } from "@/lib/api/payu";
 import NotificationModal from "@/components/NotificationModal";
-import Image from 'next/image'
 import {
   Copy,
   Download,
@@ -151,7 +150,7 @@ const UPIQRCodeCard = ({ method, booking, appointmentId, copyUPIId, showNotifica
       <div className="flex items-center gap-3 mb-4">
         <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center p-1">
           {iconSrc && !iconError ? (
-            <Image
+            <img
               src={iconSrc}
               alt={method.name}
               className="w-10 h-10 object-contain"
@@ -187,7 +186,7 @@ const UPIQRCodeCard = ({ method, booking, appointmentId, copyUPIId, showNotifica
         ) : qrData ? (
           <>
             <div className="relative mb-3">
-              <Image
+              <img
                 src={qrData.qr_url}
                 alt={`${method.name} QR Code`}
                 className="w-48 h-48 rounded-lg border-4 border-white shadow-lg"
@@ -197,7 +196,7 @@ const UPIQRCodeCard = ({ method, booking, appointmentId, copyUPIId, showNotifica
               <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
                 <div className="w-14 h-14 bg-white rounded-lg shadow-md flex items-center justify-center p-2">
                   {iconSrc && !iconError ? (
-                    <Image
+                    <img
                       src={iconSrc}
                       alt={method.name}
                       className="w-full h-full object-contain"
@@ -1049,9 +1048,11 @@ export default function PaymentsPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-white rounded-lg border flex items-center justify-center p-2">
-                          <Image
+                          <img
                             src={paymentLogos.razorpay}
                             alt="Razorpay"
+                            width={32}
+                            height={20}
                             className="h-8 object-contain"
                           />
                         </div>
@@ -1075,7 +1076,7 @@ export default function PaymentsPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-[#5f259f] rounded-lg border flex items-center justify-center p-2">
-                          <Image
+                          <img
                             src={paymentLogos.phonepe}
                             alt="PhonePe"
                             className="h-6 object-contain"
@@ -1101,9 +1102,11 @@ export default function PaymentsPage() {
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-white rounded-lg border flex items-center justify-center p-2">
-                          <Image
+                          <img
                             src={paymentLogos.payu}
                             alt="PayU"
+                            height={39}
+                            width={30}
                             className="h-6 object-contain"
                           />
                         </div>
@@ -1229,13 +1232,13 @@ export default function PaymentsPage() {
                     <p className="text-sm text-gray-500 mb-1">Selected Payment Method</p>
                     <div className="flex items-center gap-2">
                       {selectedMethod === 'razorpay' && (
-                        <Image src={paymentLogos.razorpay} alt="Razorpay" className="h-5" />
+                        <img src={paymentLogos.razorpay} alt="Razorpay" className="h-5" />
                       )}
                       {selectedMethod === 'phonepe' && (
-                       <Image src={paymentLogos.phonepe} alt="PhonePe" className="h-5" />
+                       <img src={paymentLogos.phonepe} alt="PhonePe" className="h-5" />
                       )}
                       {selectedMethod === 'payu' && (
-                       <Image src={paymentLogos.payu} alt="PayU" className="h-5" />
+                       <img src={paymentLogos.payu} alt="PayU" className="h-5" />
                       )}
                       {selectedMethod === 'cash' && (
                         <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
