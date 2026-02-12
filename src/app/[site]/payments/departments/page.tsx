@@ -17,6 +17,8 @@ import {
   verifyPayUPayment
 } from "@/lib/api/payu";
 import NotificationModal from "@/components/NotificationModal";
+import CouponSelector from "@/components/CouponSelector"; // 👈 ADD THIS IMPORT
+import { Coupon } from "@/lib/api/coupons"; // 👈 ADD THIS IMPORT
 import Image from 'next/image'
 import {
   Copy,
@@ -33,7 +35,8 @@ import {
   X,
   ExternalLink,
   SmartphoneNfc,
-  CheckCircle
+  CheckCircle,
+  Tag // 👈 ADD THIS
 } from "lucide-react";
 
 // Import QRCode package
@@ -249,6 +252,12 @@ export default function PaymentsPage() {
   const [payuCredentials, setPayuCredentials] = useState<any>(null);
   const [filteredManualPayments, setFilteredManualPayments] = useState<any[]>([]);
 
+  // 👇 NEW: Coupon States
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [totalAfterDiscount, setTotalAfterDiscount] = useState<number | null>(null);
+  const [originalTotal, setOriginalTotal] = useState<number | null>(null);
+
   // UPI Payment Popup State
   const [upiPaymentPopup, setUpiPaymentPopup] = useState({
     isOpen: false,
@@ -295,6 +304,47 @@ export default function PaymentsPage() {
     }
   };
 
+  // 👇 NEW: Coupon Handlers
+  const handleCouponApplied = (coupon: Coupon, discount: number, totalAfterDiscount: number) => {
+    setAppliedCoupon(coupon);
+    setDiscountAmount(discount);
+    setTotalAfterDiscount(totalAfterDiscount);
+
+    // Store the original total if not already stored
+    if (originalTotal === null) {
+      setOriginalTotal(parseFloat(booking.totalAmount));
+    }
+
+    // Update booking with discounted amount
+    setBooking((prev: any) => ({
+      ...prev,
+      totalAmount: totalAfterDiscount.toFixed(2),
+      appliedCoupon: {
+        id: coupon.id,
+        code: coupon.code,
+        name: coupon.name,
+        discount_type: coupon.discount_type,
+        discount_value: coupon.discount,
+        discount_amount: discount,
+        original_total: originalTotal || prev.totalAmount
+      }
+    }));
+  };
+
+  const handleCouponRemoved = () => {
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setTotalAfterDiscount(null);
+
+    // Restore original total
+    setBooking((prev: any) => ({
+      ...prev,
+      totalAmount: originalTotal?.toFixed(2) || prev.totalAmount,
+      appliedCoupon: null
+    }));
+    setOriginalTotal(null);
+  };
+
   // ============ UPI PAYMENT FLOW ============
   const handleUPIPayment = async () => {
     if (!booking) return;
@@ -326,7 +376,16 @@ export default function PaymentsPage() {
         // Add department support
         service_type: booking.type || 'category',
         service_name: booking.departmentName || booking.categoryName,
-        services_json: booking.services_json || null
+        services_json: booking.services_json || null,
+        // 👇 NEW: Add coupon data
+        coupon_applied: appliedCoupon ? {
+          id: appliedCoupon.id,
+          code: appliedCoupon.code,
+          discount_type: appliedCoupon.discount_type,
+          discount_value: appliedCoupon.discount,
+          discount_amount: discountAmount,
+          original_total: originalTotal
+        } : null
       };
 
       console.log("🟡 Creating UPI payment order:", upiData);
@@ -389,7 +448,12 @@ export default function PaymentsPage() {
           upi_note_ids: {
             customer_id: booking.customerId,
             appointment_id: appointmentId
-          }
+          },
+          // 👇 NEW: Store coupon info
+          coupon: appliedCoupon ? {
+            code: appliedCoupon.code,
+            discount: discountAmount
+          } : null
         }));
 
         // Remove pending booking
@@ -431,7 +495,7 @@ export default function PaymentsPage() {
 
     // Redirect to success page
     setTimeout(() => {
-      window.location.href = `/payment-success?method=upi&appointment_id=${upiPaymentPopup.appointmentData.appointment_id}&receipt=${upiPaymentPopup.appointmentData.receipt}&status=pending`;
+      window.location.href = `/payment-success?method=upi&appointment_id=${upiPaymentPopup.appointmentData.appointment_id}&receipt=${upiPaymentPopup.appointmentData.receipt}&status=pending${appliedCoupon ? `&coupon=${appliedCoupon.code}&discount=${discountAmount}` : ''}`;
     }, 300);
   };
 
@@ -530,7 +594,16 @@ export default function PaymentsPage() {
         slot_from: booking.selectedSlot?.from,
         slot_to: booking.selectedSlot?.to,
         token_count: booking.token || 1,
-        batch_id: booking.batchId || booking.batch_id
+        batch_id: booking.batchId || booking.batch_id,
+        // 👇 NEW: Add coupon data
+        coupon_applied: appliedCoupon ? {
+          id: appliedCoupon.id,
+          code: appliedCoupon.code,
+          discount_type: appliedCoupon.discount_type,
+          discount_value: appliedCoupon.discount,
+          discount_amount: discountAmount,
+          original_total: originalTotal
+        } : null
       });
 
       if (!orderResponse.success) {
@@ -596,7 +669,13 @@ export default function PaymentsPage() {
               discount: booking.discount ?? 0,
               currency: "INR",
               currency_symbol: "₹",
-            }
+            },
+            // 👇 NEW: Pass coupon data for verification
+            coupon_data: appliedCoupon ? {
+              coupon_id: appliedCoupon.coupon_id,
+              code: appliedCoupon.code,
+              discount_amount: discountAmount
+            } : null
           });
 
           console.log("🟢 Verify response:", verify);
@@ -617,9 +696,10 @@ export default function PaymentsPage() {
               [
                 `Appointment ID: ${verify.appointment_id || booking.appointment_id}`,
                 `Amount Paid: ₹${booking.totalAmount}`,
+                appliedCoupon ? `Coupon Applied: ${appliedCoupon.code} (Saved ₹${discountAmount})` : null,
                 `Services: ${booking.services_json ? 'Multiple services' : 'Single service'}`,
                 "You will receive confirmation email shortly"
-              ],
+              ].filter(Boolean) as string[],
               verify.redirect_url || "/payment-success"
             );
           } else {
@@ -687,7 +767,16 @@ export default function PaymentsPage() {
         service_type: booking.type || 'category',
         service_name: booking.departmentName || booking.categoryName,
         // ⭐ CRITICAL: Pass services_json to PayU
-        services_json: booking.services_json || null
+        services_json: booking.services_json || null,
+        // 👇 NEW: Add coupon data
+        coupon_applied: appliedCoupon ? {
+          id: appliedCoupon.id,
+          code: appliedCoupon.code,
+          discount_type: appliedCoupon.discount_type,
+          discount_value: appliedCoupon.discount,
+          discount_amount: discountAmount,
+          original_total: originalTotal
+        } : null
       });
 
       if (!orderResponse.success) {
@@ -769,7 +858,16 @@ export default function PaymentsPage() {
         service_type: booking.type || 'category',
         service_name: booking.departmentName || booking.categoryName,
         // ⭐ NEW: Pass services_json if available
-        services_json: booking.services_json || null
+        services_json: booking.services_json || null,
+        // 👇 NEW: Add coupon data
+        coupon_applied: appliedCoupon ? {
+          id: appliedCoupon.id,
+          code: appliedCoupon.code,
+          discount_type: appliedCoupon.discount_type,
+          discount_value: appliedCoupon.discount,
+          discount_amount: discountAmount,
+          original_total: originalTotal
+        } : null
       };
 
       console.log("🟡 Sending COH data with services_json:", cohData);
@@ -810,27 +908,33 @@ export default function PaymentsPage() {
           `${service.name} × ${service.quantity}: ₹${service.subtotal}`
         ).join('\n') || 'No services details';
 
+        const detailsArray = [
+          `Appointment ID: ${data.appointment_id}`,
+          `Receipt: ${data.receipt}`,
+          `Date: ${booking.selectedDate}`,
+          `Time: ${booking.selectedSlot?.from} - ${booking.selectedSlot?.to}`,
+          `Amount: ₹${booking.totalAmount}`,
+          `Status: ${data.status}`,
+          "",
+          "Services Selected:",
+          ...(booking.services_json?.services?.map((service: any) =>
+            `- ${service.name} × ${service.quantity}: ₹${service.subtotal}`
+          ) || ['No services details'])
+        ];
+
+        // Add coupon info if applied
+        if (appliedCoupon) {
+          detailsArray.push("", `Coupon Applied: ${appliedCoupon.code}`, `Discount: -₹${discountAmount}`);
+        }
+
+        detailsArray.push("", "Payment will be collected at hospital", "Please arrive 15 minutes before scheduled time");
+
         showNotification(
           "success",
           "Appointment Confirmed! ✅",
           "Your Cash on Hand appointment has been booked successfully.",
-          [
-            `Appointment ID: ${data.appointment_id}`,
-            `Receipt: ${data.receipt}`,
-            `Date: ${booking.selectedDate}`,
-            `Time: ${booking.selectedSlot?.from} - ${booking.selectedSlot?.to}`,
-            `Amount: ₹${booking.totalAmount}`,
-            `Status: ${data.status}`,
-            "",
-            "Services Selected:",
-            ...booking.services_json?.services?.map((service: any) =>
-              `- ${service.name} × ${service.quantity}: ₹${service.subtotal}`
-            ) || ['No services details'],
-            "",
-            "Payment will be collected at hospital",
-            "Please arrive 15 minutes before scheduled time"
-          ],
-          `/payment-success?method=cash&appointment_id=${data.appointment_id}&receipt=${data.receipt}&status=${data.status}`
+          detailsArray,
+          `/payment-success?method=cash&appointment_id=${data.appointment_id}&receipt=${data.receipt}&status=${data.status}${appliedCoupon ? `&coupon=${appliedCoupon.code}&discount=${discountAmount}` : ''}`
         );
       } else {
         showNotification(
@@ -883,7 +987,7 @@ export default function PaymentsPage() {
         "info",
         "Coming Soon",
         "PhonePe payment integration is coming soon!",
-        ["Please select another payment method", "We&apos;re working on it"]
+        ["Please select another payment method", "We're working on it"]
       );
       return;
     }
@@ -925,6 +1029,7 @@ export default function PaymentsPage() {
     }
 
     setBooking(parsed);
+    setOriginalTotal(parseFloat(parsed.totalAmount)); // Store original total
 
     // ✅ Get payment availability first
     getPaymentAvailability(userId).then((res) => {
@@ -1005,6 +1110,16 @@ export default function PaymentsPage() {
 
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
+              {/* 👇 NEW: Coupon Selector Section - Add this here */}
+              {booking && (
+                <CouponSelector
+                  userId={booking.userId}
+                  totalAmount={parseFloat(originalTotal?.toFixed(2) || booking.totalAmount)}
+                  onCouponApplied={handleCouponApplied}
+                  onCouponRemoved={handleCouponRemoved}
+                />
+              )}
+
               {/* Digital Payment Methods */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
                 <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -1166,7 +1281,7 @@ export default function PaymentsPage() {
                         <p className="text-xs text-gray-500">Department Consultation</p>
                         <p className="text-xs text-gray-500">Tokens: {booking.token || 1}</p>
                       </div>
-                      <span className="font-semibold">₹{booking.totalAmount}</span>
+                      <span className="font-semibold">₹{originalTotal || booking.totalAmount}</span>
                     </div>
                   ) : (
                     booking.items?.map((item: any, index: number) => (
@@ -1195,13 +1310,31 @@ export default function PaymentsPage() {
                           : `₹${booking.gstAmount}`}
                       </span>
                     </div>
+
+                    {/* 👇 NEW: Show coupon discount if applied */}
+                    {appliedCoupon && discountAmount > 0 && (
+                      <div className="flex justify-between py-1 text-green-600">
+                        <span className="flex items-center gap-1">
+                          <Tag className="h-4 w-4" />
+                          Coupon Discount ({appliedCoupon.code})
+                        </span>
+                        <span className="font-semibold">-₹{discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-gray-200">
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total Amount</span>
-                      <span className="text-green-600">₹{booking.totalAmount}</span>
+                      <span className="text-green-600">
+                        ₹{totalAfterDiscount?.toFixed(2) || booking.totalAmount}
+                      </span>
                     </div>
+                    {appliedCoupon && originalTotal && (
+                      <p className="text-xs text-gray-500 text-right mt-1">
+                        Original: ₹{originalTotal.toFixed(2)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1321,6 +1454,11 @@ export default function PaymentsPage() {
                   <div>
                     <p className="text-sm text-indigo-700 font-medium">Amount to Pay</p>
                     <p className="text-3xl font-bold text-green-600">₹{booking?.totalAmount}</p>
+                    {appliedCoupon && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        (Original: ₹{originalTotal?.toFixed(2)})
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm text-indigo-700 font-medium">Appointment ID</p>
@@ -1331,6 +1469,13 @@ export default function PaymentsPage() {
                     <p className="text-lg font-bold text-gray-900">{upiPaymentPopup.appointmentData?.receipt}</p>
                   </div>
                 </div>
+                {appliedCoupon && (
+                  <div className="mt-3 p-2 bg-green-100 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      <span className="font-bold">Coupon Applied:</span> {appliedCoupon.code} - You saved ₹{discountAmount}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* UPI Methods Grid with QR Codes */}
@@ -1373,17 +1518,15 @@ export default function PaymentsPage() {
                     <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">3</span>
                     <span>Amount ₹{booking?.totalAmount} will be auto-filled</span>
                   </li>
-
                   <li className="flex items-start gap-2">
-                    <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">5</span>
+                    <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">4</span>
                     <span>Complete the payment in your UPI app</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">6</span>
+                    <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm">5</span>
                     <span>Click &quot;I&apos;ve Paid&quot; button below after payment</span>
                   </li>
                 </ol>
-
               </div>
 
               {/* Action Buttons */}
@@ -1401,7 +1544,25 @@ export default function PaymentsPage() {
               <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                 <p className="text-sm text-amber-800">
                   <strong>Note:</strong> Your appointment is already confirmed. Please make the payment and click &quot;I&apos;ve Paid&quot; to proceed.
+                  Keep the payment screenshot for reference.
+                </p>
+              </div>
 
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleIPaidButton}
+                  className="w-full py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold text-lg hover:from-green-700 hover:to-emerald-700 shadow-lg flex items-center justify-center gap-2"
+                >
+                  <CheckCircle size={22} />
+                  I&apos;ve Paid
+                </button>
+              </div>
+
+              {/* Note */}
+              <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-sm text-amber-800">
+                  <strong>Note:</strong> Your appointment is already confirmed. Please make the payment andClick &quot;I&apos;ve Paid&quot; to proceed.
                   Keep the payment screenshot for reference.
                 </p>
               </div>
