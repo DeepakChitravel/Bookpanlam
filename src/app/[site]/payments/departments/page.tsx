@@ -1114,6 +1114,7 @@ export default function PaymentsPage() {
               {booking && (
                 <CouponSelector
                   userId={booking.userId}
+                  customerId={booking.customerId} // 👈 ADDED customerId
                   totalAmount={parseFloat(originalTotal?.toFixed(2) || booking.totalAmount)}
                   onCouponApplied={handleCouponApplied}
                   onCouponRemoved={handleCouponRemoved}

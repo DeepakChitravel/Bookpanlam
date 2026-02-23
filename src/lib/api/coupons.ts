@@ -16,6 +16,8 @@ export interface Coupon {
   created_at: string;
   formatted_start?: string;
   formatted_end?: string;
+   times_used?: number;        // 👈 ADD THIS - how many times it's been used
+  remaining_uses?: number | null; // 👈 ADD THIS - remaining uses
 }
 
 export interface CouponDiscount {
@@ -75,6 +77,7 @@ export async function getUserCoupons(userId: number): Promise<{
 export async function validateCoupon(
   couponCode: string,
   userId: number,
+  customerId: number, // 👈 ADDED customerId parameter
   totalAmount: number
 ): Promise<ValidateCouponResponse> {
   if (!couponCode.trim() || !userId) {
@@ -98,6 +101,7 @@ export async function validateCoupon(
       body: JSON.stringify({
         coupon_code: couponCode.trim(),
         user_id: userId,
+        customer_id: customerId, // 👈 ADDED customerId
         total_amount: totalAmount
       })
     });

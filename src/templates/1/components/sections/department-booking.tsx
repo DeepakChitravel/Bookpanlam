@@ -1,19 +1,44 @@
 "use client";
-import{DepartmentBookingProps} from "@/types";
+import { DepartmentBookingProps } from "@/types";
 import { useEffect, useState } from "react";
 import { uploadsUrl } from "@/config";
 import { getDepartments } from "@/lib/api/departments";
 import { useAuth } from "@/contexts/AuthContext";
 import { getSiteSettings } from "@/lib/api/siteSettings";
-// CHANGE: Import BookingForm instead of BookingModal
 import BookingForm from "./Department/BookingModal";
 import CalendarView from "./Department/CalendarView";
 import { toast } from "sonner";
 import Image from 'next/image'
 import { getEnabledPaymentGateways, getAvailableDaysCount, getNextAvailableSlot, formatShortDate } from "./Department/utils";
-import { Loader2, AlertCircle, Calendar, Clock, Building, CreditCard, Users, XCircle, CheckCircle, Star } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  Calendar,
+  Clock,
+  Building,
+  CreditCard,
+  Users,
+  Star,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Award,
+  Clock3,
+  IndianRupee,
+  Activity,
+  Stethoscope,
+  Scissors,
+  Syringe,
+  Pill,
+  Heart,
+  Bone,
+  Brain,
+  Eye,
+  Hospital,
+  Microscope
+} from "lucide-react";
 
-// StatsCards with doctor-style UI
+// Stats Cards
 const StatsCards = ({ departments, siteSettings }: any) => {
   const enabledGateways = getEnabledPaymentGateways(siteSettings);
   const paymentEnabled = enabledGateways.length > 0;
@@ -23,42 +48,50 @@ const StatsCards = ({ departments, siteSettings }: any) => {
       icon: Building,
       value: departments.length,
       label: "Available Departments",
-      color: "blue"
+      color: "blue",
+      bg: "bg-blue-50",
+      text: "text-blue-600"
     },
     {
       icon: Calendar,
       value: departments.reduce((acc: number, dept: any) => acc + getAvailableDaysCount(dept, 30), 0),
-      label: "Available Days (Next 30 days)",
-      color: "green"
+      label: "Available Days",
+      color: "green",
+      bg: "bg-green-50",
+      text: "text-green-600"
     },
     {
       icon: Clock,
-      value: "Instant",
-      label: "Booking Confirmation",
-      color: "purple"
+      value: "24/7",
+      label: "Booking Available",
+      color: "purple",
+      bg: "bg-purple-50",
+      text: "text-purple-600"
     },
     {
       icon: CreditCard,
       value: paymentEnabled ? "Online" : "Cash",
       label: "Payment Method",
-      color: "amber"
+      color: "amber",
+      bg: "bg-amber-50",
+      text: "text-amber-600"
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-8 sm:mb-10">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
       {stats.map((stat, index) => (
-        <div key={index} className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className={`p-2 sm:p-3 ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600' :
-                stat.color === 'green' ? 'bg-green-50 text-green-600' :
-                  stat.color === 'purple' ? 'bg-purple-50 text-purple-600' : 'bg-amber-50 text-amber-600'
-              } rounded-xl`}>
-              <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
+        <div
+          key={index}
+          className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1"
+        >
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 ${stat.bg} rounded-lg`}>
+              <stat.icon className={`h-5 w-5 ${stat.text}`} />
             </div>
             <div>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-xs sm:text-sm text-gray-600">{stat.label}</p>
+              <p className="text-xl font-bold text-gray-900">{stat.value}</p>
+              <p className="text-xs text-gray-500">{stat.label}</p>
             </div>
           </div>
         </div>
@@ -67,51 +100,20 @@ const StatsCards = ({ departments, siteSettings }: any) => {
   );
 };
 
-const PaymentStatus = ({ siteSettings }: any) => {
-  const enabledGateways = getEnabledPaymentGateways(siteSettings);
-  const paymentEnabled = enabledGateways.length > 0;
-
-  if (!siteSettings) return null;
-
-  return (
-    <div className="mb-6 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${paymentEnabled ? "bg-blue-50" : "bg-gray-50"}`}>
-            <CreditCard className={`h-6 w-6 ${paymentEnabled ? "text-blue-600" : "text-gray-600"}`} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">
-              {paymentEnabled ? "Online Payment Available" : "Pay at Hospital"}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {paymentEnabled
-                ? `${enabledGateways.length} payment method${enabledGateways.length > 1 ? "s" : ""} enabled`
-                : "Online payment not configured. Pay when you visit the hospital."}
-            </p>
-          </div>
-        </div>
-
-        {paymentEnabled && (
-          <div className="flex flex-wrap gap-2">
-            {enabledGateways.map((gateway) => (
-              <span
-                key={gateway}
-                className={`px-3 py-1.5 text-xs font-medium rounded-full ${gateway === "Razorpay"
-                    ? "bg-blue-100 text-blue-800"
-                    : gateway === "PhonePe"
-                      ? "bg-purple-100 text-purple-800"
-                      : "bg-green-100 text-green-800"
-                  }`}
-              >
-                {gateway}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+// Department Icon Mapper
+const getDepartmentIcon = (departmentName: string) => {
+  const name = departmentName.toLowerCase();
+  if (name.includes('cardio') || name.includes('heart')) return Heart;
+  if (name.includes('ortho') || name.includes('bone')) return Bone;
+  if (name.includes('neuro') || name.includes('brain')) return Brain;
+  if (name.includes('eye') || name.includes('ophthal')) return Eye;
+  if (name.includes('trauma') || name.includes('injury')) return Hospital; // instead of Bandage
+  if (name.includes('skin') || name.includes('derma')) return Activity;
+  if (name.includes('surgery') || name.includes('surgeon')) return Scissors;
+  if (name.includes('pediatric') || name.includes('child')) return Users;
+  if (name.includes('gyne') || name.includes('women')) return Heart;
+  if (name.includes('general') || name.includes('primary')) return Stethoscope;
+  return Building;
 };
 
 const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
@@ -121,16 +123,13 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
   const [loading, setLoading] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  // CHANGE: Add state for selected department, slot, and show booking form
   const [selectedDepartment, setSelectedDepartment] = useState<any>(null);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
+  const [expandedDepartmentId, setExpandedDepartmentId] = useState<number | null>(null);
   const enabledGateways = getEnabledPaymentGateways(siteSettings);
-
-  // CHANGE: Remove modal state
-  // REMOVE: const [bookingModal, setBookingModal] = useState({ ... });
 
   useEffect(() => {
     const fetchSiteSettings = async () => {
@@ -181,7 +180,6 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
       }
 
       const enhancedDepartments = data.map((department: any) => {
-        // Parse appointmentSettings and leaveDates if they are strings
         const appointmentSettings = typeof department.appointmentSettings === 'string'
           ? JSON.parse(department.appointmentSettings)
           : department.appointmentSettings || {};
@@ -275,16 +273,11 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
       });
 
       setDepartments(enhancedDepartments);
-      // CHANGE: Set first department as selected
-      if (enhancedDepartments.length > 0) {
-        setSelectedDepartment(enhancedDepartments[0]);
-      }
     };
 
     fetchData();
   }, [userId]);
 
-  // CHANGE: Update handleSlotClick to use inline form
   const handleSlotClick = (department: any, date: Date, slot: any) => {
     if (!user || !user.customer_id) {
       toast.error("Please sign in to book an appointment.");
@@ -297,26 +290,41 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
     setSelectedDate(date);
     setSelectedSlot(slot);
     setShowBookingForm(true);
-    
-    // Scroll to booking form
+
     setTimeout(() => {
-      document.getElementById('booking-form-section')?.scrollIntoView({ 
+      document.getElementById('booking-form-section')?.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       });
     }, 100);
   };
 
-  // CHANGE: Add close booking form function
   const handleCloseBookingForm = () => {
     setShowBookingForm(false);
     setSelectedSlot(null);
   };
 
-  // CHANGE: Add booking success function
   const handleBookingSuccess = () => {
     setShowBookingForm(false);
     setSelectedSlot(null);
+  };
+
+  const toggleDepartmentCalendar = (departmentId: number) => {
+    setExpandedDepartmentId(expandedDepartmentId === departmentId ? null : departmentId);
+    setSelectedDate(null);
+  };
+
+  const handleBookNowClick = (department: any, nextSlot: any) => {
+    setExpandedDepartmentId(department.id);
+    const date = new Date(nextSlot.date);
+    setSelectedDate(date);
+
+    setTimeout(() => {
+      document.getElementById(`department-${department.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }, 100);
   };
 
   if (loading || loadingSettings) {
@@ -355,131 +363,178 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
 
   return (
     <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-gray-50 to-white">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 max-w-7xl">
+        {/* Header */}
         <div className="text-center mb-8 sm:mb-12">
-          <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-full text-sm font-medium mb-4 shadow-lg">
             <Building className="h-4 w-4" />
             Book Department Appointments Online
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
-            Available Departments for Consultation
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+            Our Medical Departments
           </h2>
           <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-            Select a department and choose your preferred date & time slot. All consultations are confirmed instantly.
+            Choose from our specialized departments and book your consultation with expert doctors
           </p>
         </div>
 
-        <PaymentStatus siteSettings={siteSettings} />
         <StatsCards departments={departments} siteSettings={siteSettings} />
 
-        {/* Two-column layout: Left for calendar, Right for booking form */}
+        {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left column - Calendar and Department List */}
-          <div className="lg:col-span-2 space-y-8">
+          {/* Left column - Department Cards */}
+          <div className="lg:col-span-2 space-y-6">
             {departments.map((department) => {
               const nextSlot = getNextAvailableSlot(department);
               const availableDays = getAvailableDaysCount(department, 30);
+              const isExpanded = expandedDepartmentId === department.id;
+              const DepartmentIcon = getDepartmentIcon(department.name);
 
               return (
                 <div
                   key={department.id}
-                  className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300"
+                  id={`department-${department.id}`}
+                  className={`bg-white rounded-2xl border shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl ${isExpanded ? 'border-blue-200 ring-2 ring-blue-100' : 'border-gray-200'
+                    }`}
                 >
-                  <div className="p-4 sm:p-6 border-b border-gray-100">
-                    <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                      <div className="relative self-start">
-                        {department.image && (
-                          <Image
-                            src={`${uploadsUrl}/${department.image}`}
-                            alt={department.name}
-                            width={400}
-  height={300}
-                            className="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm"
-                          />
-                        )}
-                        <div className="absolute -bottom-1 -right-1 bg-green-500 text-white text-xs font-medium px-2 py-0.5 rounded-full">
-                          Open
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                          <div>
-                            <h3 className="font-bold text-gray-900 text-lg sm:text-xl">{department.name}</h3>
-                            <p className="text-sm text-gray-600">{department.description || "Comprehensive department services"}</p>
+                  {/* Main Card Content */}
+                  <div className="p-6">
+                    <div className="flex gap-6">
+                      {/* Left - Image/Icon Section */}
+                      <div className="relative flex-shrink-0">
+                        {department.image ? (
+                          <div className="relative w-28 h-28 rounded-2xl overflow-hidden border-4 border-white shadow-xl">
+                            <Image
+                              src={`${uploadsUrl}/${department.image}`}
+                              alt={department.name}
+                              fill
+                              className="object-cover"
+                            />
                           </div>
-                          <div className="text-left sm:text-right">
-                            <p className="text-lg font-bold text-blue-700">
-                              ₹{department.consultation_fee || "Consultation"}
+                        ) : (
+                          <div className="w-28 h-28 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-xl">
+                            <DepartmentIcon className="h-12 w-12 text-white" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right - Details Section */}
+                      <div className="flex-1">
+                        {/* Title and Price Row */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                              {department.name}
+                            </h3>
+                            <p className="text-sm text-gray-500 line-clamp-2">
+                              {department.description || "Comprehensive medical services with experienced specialists"}
                             </p>
-                            <p className="text-xs text-gray-500">per session</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-1 text-2xl font-bold text-blue-600">
+                              <IndianRupee className="h-5 w-5" />
+                              <span>{department.consultation_fee || "499"}</span>
+                            </div>
+                            <p className="text-xs text-gray-500">Consultation fee</p>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3">
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-gray-600" />
-                            <span className="text-xs font-medium text-gray-700 ml-1">
-                              {department.staffCount || 'Multiple'} specialists
+                        {/* Tags Row */}
+                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                          <div className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 rounded-full">
+                            <Users className="h-3.5 w-3.5 text-blue-600" />
+                            <span className="text-xs font-medium text-blue-700">
+                              {department.staffCount || '8+'} Specialists
                             </span>
                           </div>
-                          <div className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-                            {availableDays} days available
+                          <div className="flex items-center gap-1 px-3 py-1.5 bg-green-50 rounded-full">
+                            <Calendar className="h-3.5 w-3.5 text-green-600" />
+                            <span className="text-xs font-medium text-green-700">
+                              {availableDays} days available
+                            </span>
                           </div>
-                          {department.leaveDates?.length > 0 && (
-                            <div className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                              {department.leaveDates.length} holiday{department.leaveDates.length > 1 ? 's' : ''}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 px-3 py-1.5 bg-purple-50 rounded-full">
+                            <Clock3 className="h-3.5 w-3.5 text-purple-600" />
+                            <span className="text-xs font-medium text-purple-700">
+                              Mon - Sat
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Rating and Experience Row */}
+                        <div className="flex items-center gap-4 mb-4">
                           <div className="flex items-center gap-1">
                             {[...Array(5)].map((_, i) => (
-                              <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+                              <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                             ))}
-                            <span className="text-xs font-medium text-gray-700 ml-1">4.5</span>
+                            <span className="text-sm font-semibold text-gray-700 ml-1">4.9</span>
+                            <span className="text-xs text-gray-500">(128 reviews)</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                            <Award className="h-4 w-4 text-amber-500" />
+                            <span>15+ years experience</span>
                           </div>
                         </div>
+
+                        {/* Next Available Slot */}
+                        {nextSlot && (
+                          <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white rounded-lg shadow-sm">
+                                  <Clock className="h-4 w-4 text-blue-600" />
+                                </div>
+                                <div>
+                                  <p className="text-xs text-blue-600 font-medium">Next Available</p>
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {nextSlot.isToday ? 'Today' : formatShortDate(nextSlot.date)} • {nextSlot.time}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => handleBookNowClick(department, nextSlot)}
+                                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                              >
+                                Book Now
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Toggle Calendar Button */}
+                        <button
+                          onClick={() => toggleDepartmentCalendar(department.id)}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-xl border border-gray-200 transition-all duration-300 group"
+                        >
+                          <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-600">
+                            {isExpanded ? 'Hide Available Slots' : 'View All Available Time Slots'}
+                          </span>
+                          {isExpanded ? (
+                            <ChevronUp className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-transform" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-transform" />
+                          )}
+                        </button>
                       </div>
                     </div>
-
-                    {nextSlot && (
-                      <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium text-blue-800">
-                              Next available: {nextSlot.isToday ? 'Today' : formatShortDate(nextSlot.date)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-blue-700">
-                              {nextSlot.time}
-                            </span>
-                            <button
-                              onClick={() => {
-                                const date = new Date(nextSlot.date);
-                                handleSlotClick(department, date, { from: nextSlot.time, to: "04:00PM" });
-                              }}
-                              className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-sm"
-                            >
-                              Book Now
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
-                  {/* Calendar View for this department */}
-                  <CalendarView
-                    department={department}
-                    selectedDate={selectedDepartment?.id === department.id ? selectedDate : null}
-                    setSelectedDate={(date) => {
-                      setSelectedDate(date);
-                      setSelectedDepartment(department);
-                    }}
-                    currentMonth={currentMonth}
-                    setCurrentMonth={setCurrentMonth}
-                    handleSlotClick={handleSlotClick}
-                  />
+                  {/* Expandable Calendar */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 bg-gray-50/50">
+                      <CalendarView
+                        department={department}
+                        selectedDate={selectedDepartment?.id === department.id ? selectedDate : null}
+                        setSelectedDate={(date) => {
+                          setSelectedDate(date);
+                          setSelectedDepartment(department);
+                        }}
+                        currentMonth={currentMonth}
+                        setCurrentMonth={setCurrentMonth}
+                        handleSlotClick={handleSlotClick}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -488,7 +543,7 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
           {/* Right column - Booking Form */}
           <div className="lg:col-span-1" id="booking-form-section">
             {showBookingForm && selectedDepartment && selectedSlot && selectedDate ? (
-              <div className="sticky top-24">
+              <div className="sticky top-24 animate-slideIn">
                 <BookingForm
                   department={selectedDepartment}
                   selectedDate={selectedDate}
@@ -500,40 +555,66 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
                 />
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm h-full">
-                <div className="flex flex-col items-center justify-center text-center h-[400px]">
-                  <Building className="h-12 w-12 text-gray-300 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                    Select a Time Slot
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-lg h-full">
+                <div className="flex flex-col items-center justify-center text-center h-[500px]">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center mb-6">
+                    <Calendar className="h-10 w-10 text-blue-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">
+                    Ready to Book?
                   </h3>
-                  <p className="text-gray-500 mb-6">
-                    Choose a department, date, and time slot from the calendar to see booking details here.
+                  <p className="text-gray-500 mb-6 max-w-xs">
+                    Select a department and choose your preferred time slot to see booking details here
                   </p>
+                  <div className="w-16 h-1 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"></div>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        <div className="mt-8 sm:mt-12 text-center">
-          <div className="inline-flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-sm text-gray-600 bg-white border border-gray-200 rounded-2xl px-4 sm:px-6 py-4 shadow-sm">
+        {/* Legend */}
+        <div className="mt-8 text-center">
+          <div className="inline-flex flex-wrap items-center justify-center gap-4 text-sm bg-white border border-gray-200 rounded-2xl px-6 py-4 shadow-sm">
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-green-500"></div>
-              <span>Available (has schedule & slots)</span>
+              <div className="w-3 h-3 rounded-full bg-green-500 ring-2 ring-green-100"></div>
+              <span className="text-gray-600">Available Slots</span>
             </div>
-            <div className="h-4 w-px bg-gray-300 hidden sm:block"></div>
+            <div className="w-px h-4 bg-gray-300"></div>
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-amber-500"></div>
-              <span>On holiday</span>
+              <div className="w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-100"></div>
+              <span className="text-gray-600">Limited Slots</span>
             </div>
-            <div className="h-4 w-px bg-gray-300 hidden sm:block"></div>
+            <div className="w-px h-4 bg-gray-300"></div>
             <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-gray-400"></div>
-              <span>Not available</span>
+              <div className="w-3 h-3 rounded-full bg-red-500 ring-2 ring-red-100"></div>
+              <span className="text-gray-600">Fully Booked</span>
+            </div>
+            <div className="w-px h-4 bg-gray-300"></div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-gray-400 ring-2 ring-gray-100"></div>
+              <span className="text-gray-600">Not Available</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Add custom animations */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        .animate-slideIn {
+          animation: slideIn 0.3s ease-out;
+        }
+      `}</style>
     </section>
   );
 };

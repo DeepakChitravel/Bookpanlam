@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 interface CouponSelectorProps {
     userId: number;
+    customerId: number;
     totalAmount: number;
     onCouponApplied: (coupon: Coupon, discountAmount: number, totalAfterDiscount: number) => void;
     onCouponRemoved: () => void;
@@ -14,6 +15,7 @@ interface CouponSelectorProps {
 
 export default function CouponSelector({
     userId,
+    customerId,
     totalAmount,
     onCouponApplied,
     onCouponRemoved
@@ -31,31 +33,38 @@ export default function CouponSelector({
     const [error, setError] = useState<string | null>(null);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
-    // Wrap fetchUserCoupons in useCallback
-    const fetchUserCoupons = useCallback(async () => {
-        setLoading(true);
-        setFetchError(null);
-        try {
-            const response = await getUserCoupons(userId);
-            if (response.success) {
-                setCoupons(response.data || []);
-                if (response.data.length === 0) {
-                    setFetchError("No coupons available");
-                }
-            } else {
-                setFetchError(response.message || "Failed to load coupons");
-                setCoupons([]);
-            }
-        } catch (error) {
-            console.error("Failed to fetch coupons:", error);
-            setFetchError("Failed to load coupons");
-            setCoupons([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [userId]);
+// In CouponSelector.tsx, update the fetchUserCoupons function:
 
-    // Fetch user coupons on mount
+const fetchUserCoupons = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+        const response = await getUserCoupons(userId);
+        console.log("📦 Raw coupons from API:", response);
+        
+        if (response.success) {
+            // The backend now only returns coupons that haven't reached limit
+            setCoupons(response.data || []);
+            
+            if (response.data.length === 0) {
+                setFetchError("No coupons available");
+                // Don't show the component at all if no coupons
+                return null;
+            }
+        } else {
+            setFetchError(response.message || "Failed to load coupons");
+            setCoupons([]);
+        }
+    } catch (error) {
+        console.error("Failed to fetch coupons:", error);
+        setFetchError("Failed to load coupons");
+        setCoupons([]);
+    } finally {
+        setLoading(false);
+    }
+}, [userId]);
+
+    // Fetch user coupons on mount - only if userId exists
     useEffect(() => {
         if (userId && userId > 0) {
             fetchUserCoupons();
@@ -68,7 +77,7 @@ export default function CouponSelector({
         setError(null);
 
         try {
-            const result = await validateCoupon(coupon.code, userId, totalAmount);
+            const result = await validateCoupon(coupon.code, userId, customerId, totalAmount);
 
             if (result.success && result.discount) {
                 setAppliedCoupon(result.data!);
@@ -103,7 +112,7 @@ export default function CouponSelector({
         setError(null);
 
         try {
-            const result = await validateCoupon(couponCode.trim(), userId, totalAmount);
+            const result = await validateCoupon(couponCode.trim(), userId, customerId, totalAmount);
 
             if (result.success && result.discount) {
                 setAppliedCoupon(result.data!);
@@ -145,17 +154,15 @@ export default function CouponSelector({
         }
     };
 
-    // Check if coupon is applicable (minimum amount) - FIXED: Added null check
+    // Check if coupon is applicable (minimum amount)
     const isCouponApplicable = (coupon: Coupon) => {
-        // If min_booking_amount is null or undefined, coupon is applicable
         if (coupon.min_booking_amount === null || coupon.min_booking_amount === undefined) {
             return true;
         }
-        // Otherwise check if totalAmount meets the minimum
         return totalAmount >= coupon.min_booking_amount;
     };
 
-    // Get minimum amount display - FIXED: Added null check
+    // Get minimum amount display
     const getMinAmountDisplay = (coupon: Coupon) => {
         if (coupon.min_booking_amount && coupon.min_booking_amount > 0) {
             return `Min. ₹${coupon.min_booking_amount}`;
@@ -163,13 +170,33 @@ export default function CouponSelector({
         return null;
     };
 
-    // Calculate amount needed to apply coupon - FIXED: Added null check
+    // Calculate amount needed to apply coupon
     const getAmountNeeded = (coupon: Coupon) => {
         if (coupon.min_booking_amount && coupon.min_booking_amount > totalAmount) {
             return (coupon.min_booking_amount - totalAmount).toFixed(0);
         }
         return null;
     };
+
+    // Don't render anything if no coupons and no applied coupon AND no fetch error
+    if (!loading && coupons.length === 0 && !appliedCoupon && fetchError === "No coupons available") {
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="flex items-center gap-2 mb-2">
+                    <Tag className="h-5 w-5 text-gray-400" />
+                    <h3 className="font-semibold text-gray-900">Coupons & Offers</h3>
+                </div>
+                <p className="text-sm text-gray-500 text-center py-4">
+                    No active coupons available at the moment
+                </p>
+            </div>
+        );
+    }
+
+    // Don't render anything if no coupons and no applied coupon and no fetch error
+    if (!loading && coupons.length === 0 && !appliedCoupon && !fetchError) {
+        return null;
+    }
 
     return (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -230,7 +257,7 @@ export default function CouponSelector({
                 </div>
             )}
 
-            {/* Coupon Input */}
+            {/* Coupon Input - Only show if no coupon applied */}
             {!appliedCoupon && (
                 <div className="mb-4">
                     <div className="flex gap-2">
@@ -259,7 +286,7 @@ export default function CouponSelector({
                 </div>
             )}
 
-            {/* Coupons List */}
+            {/* Coupons List - Only show if no coupon applied */}
             {!appliedCoupon && showCoupons && (
                 <div className="mt-2 space-y-3 max-h-80 overflow-y-auto pr-1">
                     {loading ? (
@@ -283,8 +310,8 @@ export default function CouponSelector({
                                 <div
                                     key={coupon.id}
                                     className={`border rounded-lg p-4 transition-all ${applicable
-                                            ? 'border-blue-200 hover:border-blue-400 hover:shadow-md cursor-pointer bg-white'
-                                            : 'border-gray-200 bg-gray-50 opacity-60'
+                                        ? 'border-blue-200 hover:border-blue-400 hover:shadow-md cursor-pointer bg-white'
+                                        : 'border-gray-200 bg-gray-50 opacity-60'
                                         }`}
                                     onClick={() => applicable && handleSelectCoupon(coupon)}
                                 >
@@ -324,10 +351,11 @@ export default function CouponSelector({
                                             <Calendar className="h-3 w-3" />
                                             Valid till {coupon.formatted_end}
                                         </span>
-                                        {coupon.usage_limit && coupon.usage_limit > 0 && (
+                                        {/* Show remaining uses instead of total usage limit */}
+                                        {coupon.usage_limit && coupon.usage_limit > 0 && coupon.remaining_uses !== undefined && (
                                             <span className="flex items-center gap-1">
                                                 <Tag className="h-3 w-3" />
-                                                {coupon.usage_limit} uses left
+                                                {coupon.remaining_uses} {coupon.remaining_uses === 1 ? 'use' : 'uses'} left
                                             </span>
                                         )}
                                     </div>
@@ -346,7 +374,7 @@ export default function CouponSelector({
             )}
 
             {/* Error message for fetch */}
-            {fetchError && !loading && coupons.length === 0 && !appliedCoupon && (
+            {fetchError && !loading && coupons.length === 0 && !appliedCoupon && fetchError !== "No coupons available" && (
                 <div className="text-center py-4">
                     <p className="text-sm text-gray-500">{fetchError}</p>
                 </div>
