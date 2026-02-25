@@ -295,7 +295,7 @@ const getAvailableTokens = () => {
   useEffect(() => {
     if (user) {
       if (!user.customer_id) {
-        toast.error("Please sign in to book an appointment.");
+        toast.error("This page-1.");
       }
     }
   }, [user]);

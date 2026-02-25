@@ -1051,6 +1051,8 @@ export default function PaymentsPage() {
                         <div className="w-12 h-12 bg-white rounded-lg border flex items-center justify-center p-2">
                           <Image
                             src={paymentLogos.razorpay}
+                            width={122}
+                            height={122}
                             alt="Razorpay"
                             className="h-8 object-contain"
                           />

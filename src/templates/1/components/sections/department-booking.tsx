@@ -278,26 +278,29 @@ const DepartmentBooking = ({ userId, site }: DepartmentBookingProps) => {
     fetchData();
   }, [userId]);
 
-  const handleSlotClick = (department: any, date: Date, slot: any) => {
-    if (!user || !user.customer_id) {
-      toast.error("Please sign in to book an appointment.");
-      return;
-    }
+const handleSlotClick = (department: any, date: Date, slot: any) => {
+  if (!user || !user.customer_id) {
+    toast.error("Please login to book appointment", {
+      id: "login-required-toast", // prevents duplicate
+      duration: 3000, // 3 seconds
+    });
+    return;
+  }
 
-    console.log("🏥 Department Slot clicked:", slot);
+  console.log("🏥 Department Slot clicked:", slot);
 
-    setSelectedDepartment(department);
-    setSelectedDate(date);
-    setSelectedSlot(slot);
-    setShowBookingForm(true);
+  setSelectedDepartment(department);
+  setSelectedDate(date);
+  setSelectedSlot(slot);
+  setShowBookingForm(true);
 
-    setTimeout(() => {
-      document.getElementById('booking-form-section')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }, 100);
-  };
+  setTimeout(() => {
+    document.getElementById('booking-form-section')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  }, 100);
+};
 
   const handleCloseBookingForm = () => {
     setShowBookingForm(false);

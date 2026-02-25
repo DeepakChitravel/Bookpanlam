@@ -287,27 +287,29 @@ const HomepageBooking = ({ userId, site }: HomepageBookingProps) => {
     fetchData();
   }, [userId]);
 
-  const handleSlotClick = (doctor: any, date: Date, slot: any) => {
-    if (!user || !user.customer_id) {
-      toast.error("Please sign in to book an appointment.");
-      return;
-    }
+const handleSlotClick = (doctor: any, date: Date, slot: any) => {
+  if (!user || !user.customer_id) {
+    toast.error("Please login to book appointment", {
+      id: "login-required-doctor", // prevents duplicate toast
+      duration: 3000, // 3 seconds
+    });
+    return;
+  }
 
-    console.log("🏠 Slot clicked:", slot);
+  console.log("🏠 Slot clicked:", slot);
 
-    setSelectedDoctor(doctor);
-    setSelectedDate(date);
-    setSelectedSlot(slot);
-    setShowBookingForm(true);
+  setSelectedDoctor(doctor);
+  setSelectedDate(date);
+  setSelectedSlot(slot);
+  setShowBookingForm(true);
 
-    setTimeout(() => {
-      document.getElementById('booking-form-section')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }, 100);
-  };
-
+  setTimeout(() => {
+    document.getElementById('booking-form-section')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  }, 100);
+};
   const handleCloseBookingForm = () => {
     setShowBookingForm(false);
     setSelectedSlot(null);

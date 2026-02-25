@@ -288,7 +288,7 @@ const BookingForm = ({
   // Moved user validation to a separate effect
   useEffect(() => {
     if (user && !user.customer_id) {
-      toast.error("Please sign in to book an appointment.");
+      toast.error("This page-2.");
     }
   }, [user]); // Added user dependency
 
