@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarIcon, ChevronRight } from "lucide-react";
+import { CalendarIcon, ChevronRight, X } from "lucide-react";
 import {
   DAYS_OF_WEEK,
   MONTHS,
@@ -10,6 +10,7 @@ import {
   areAllSlotsFull,
   getAvailableTokensForDate
 } from "./utils";
+import { useState, useEffect, useRef } from "react";
 
 interface CalendarViewProps {
   doctor: any;
@@ -18,6 +19,7 @@ interface CalendarViewProps {
   currentMonth: Date;
   setCurrentMonth: (date: Date) => void;
   handleSlotClick: (doctor: any, date: Date, slot: any) => void;
+  selectedSlot?: any;
 }
 
 const convertToMinutes = (time: string) => {
@@ -55,8 +57,34 @@ const CalendarView = ({
   doctor,
   selectedDate,
   setSelectedDate,
-  handleSlotClick
+  handleSlotClick,
+  selectedSlot: externalSelectedSlot
 }: CalendarViewProps) => {
+  const [showSlotModal, setShowSlotModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<any>(null);
+  const selectedSlotRef = useRef<HTMLDivElement>(null);
+
+  // Define activeSlot BEFORE any useEffect that uses it
+  const activeSlot = externalSelectedSlot || selectedSlot;
+
+  useEffect(() => {
+    if (selectedDate) {
+      setShowSlotModal(true);
+    } else {
+      setShowSlotModal(false);
+    }
+  }, [selectedDate]);
+
+  // Scroll to selected slot summary when slot is selected
+  useEffect(() => {
+    if (activeSlot && selectedSlotRef.current) {
+      // Smooth scroll to the selected slot summary
+      selectedSlotRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center'
+      });
+    }
+  }, [activeSlot]);
 
   const getCurrentTimeMinutes = () => {
     const now = new Date();
@@ -90,63 +118,6 @@ const CalendarView = ({
     slotDateOnly.setHours(0, 0, 0, 0);
 
     return slotDateOnly > maxAdvanceDate;
-  };
-
-  const isSlotForFutureDate = (slotDate: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const slotDateOnly = new Date(slotDate);
-    slotDateOnly.setHours(0, 0, 0, 0);
-
-    return slotDateOnly.getTime() > today.getTime();
-  };
-
-  console.log("🟦 Doctor Appointment Window:", {
-    from: doctor?.appointment_time_from,
-    to: doctor?.appointment_time_to
-  });
-
-  const isSlotForToday = (slotDate: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const slotDateOnly = new Date(slotDate);
-    slotDateOnly.setHours(0, 0, 0, 0);
-
-    return slotDateOnly.getTime() === today.getTime();
-  };
-
-  const handleSlotClickDirect = (doctor: any, date: Date, slot: any) => {
-    console.log("🎯🎯🎯 handleSlotClickDirect CALLED!");
-    console.log("Slot:", slot);
-    console.log("Slot enabled from UI:", slot.enabled);
-    console.log("Date:", date);
-
-    const dayOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
-    console.log("Day of week:", dayOfWeek);
-
-    const daySchedule = doctor.weeklySchedule?.[dayOfWeek];
-    let slotEnabled = true;
-
-    if (daySchedule?.slots) {
-      const originalSlot = daySchedule.slots.find((s: any) =>
-        s.from === slot.from && s.to === slot.to
-      );
-      console.log("Original slot from schedule:", originalSlot);
-      slotEnabled = originalSlot?.enabled ?? true;
-    }
-
-    console.log("Final slotEnabled:", slotEnabled);
-
-    const fixedSlot = {
-      ...slot,
-      enabled: slotEnabled
-    };
-
-    console.log("Sending to handleSlotClick:", fixedSlot);
-
-    handleSlotClick(doctor, date, fixedSlot);
   };
 
   const isPastDate = (date: Date) => {
@@ -183,11 +154,62 @@ const CalendarView = ({
     return days;
   };
 
+  const handleDateClick = (date: Date) => {
+    if (!isPastDate(date)) {
+      setSelectedDate(date);
+      setSelectedSlot(null);
+      setShowSlotModal(true);
+    }
+  };
+
+  const handleSlotSelect = (slot: any) => {
+    setSelectedSlot(slot);
+    handleSlotClick(doctor, selectedDate!, slot);
+    // Auto close the modal after selection
+    setShowSlotModal(false);
+  };
+
+  const handleCloseModal = () => {
+    setShowSlotModal(false);
+  };
+
   const next30Days = getNext30Days();
   const currentMonth = next30Days[0].month;
 
   return (
     <div className="mt-6 border-t border-gray-100 pt-6">
+      {/* Selected Slot Summary - with ref for scrolling */}
+      {activeSlot && selectedDate && (
+        <div 
+          ref={selectedSlotRef}
+          className="mb-6 p-4 sm:p-5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 shadow-lg animate-fadeIn"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3 w-full sm:w-auto">
+              <div className="bg-green-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm text-green-700 font-medium mb-1">Selected Appointment</p>
+                <p className="text-base sm:text-lg font-bold text-gray-900">
+                  {formatShortDate(selectedDate)} • {formatTime12Hour(activeSlot.from)} - {formatTime12Hour(activeSlot.to)}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                  Click continue to book this appointment
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedSlot(null);
+              }}
+              className="w-full sm:w-auto text-sm text-gray-600 hover:text-gray-900 px-4 py-2 bg-white rounded-lg border border-gray-200 hover:border-gray-300 transition-colors font-medium"
+            >
+              Change Slot
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
@@ -290,14 +312,8 @@ const CalendarView = ({
                 )}
 
                 <button
-                  onClick={() => {
-                    if (!isPast) {
-                      setSelectedDate(day.date);
-                      handleSlotClick(doctor, day.date, null); // ⬅ CLEAR SLOT WHEN CLICKING GREY DAY
-                    }
-                  }}
+                  onClick={() => handleDateClick(day.date)}
                   disabled={isPast}
-
                   className={`
                     relative w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex flex-col items-center justify-center
                     rounded-full transition-all duration-200 border
@@ -345,10 +361,10 @@ const CalendarView = ({
       {doctor.appointment_time_from && doctor.appointment_time_to && (
         <div className="mt-4 mb-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
           <div className="flex items-start gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg">
+            <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
               <CalendarIcon className="h-5 w-5 text-blue-600" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-semibold text-gray-700">
                 {"Doctor's Appointment Hours"}
               </p>
@@ -370,239 +386,310 @@ const CalendarView = ({
         </div>
       )}
 
-      {selectedDate && (
-        <div className="mt-4 p-4 sm:p-5 bg-gradient-to-r from-white to-blue-50 rounded-xl border border-blue-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <CalendarIcon className="h-5 w-5 text-blue-600" />
+      {/* Slot Selection Modal */}
+      {showSlotModal && selectedDate && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+            onClick={handleCloseModal}
+          ></div>
+
+          {/* Modal */}
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div 
+              className="relative transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all w-full max-w-3xl mx-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-3 sm:py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="bg-white/20 p-1.5 sm:p-2 rounded-lg">
+                      <CalendarIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-bold text-white">
+                        Available Time Slots
+                      </h3>
+                      <p className="text-blue-100 text-xs sm:text-sm mt-0.5 sm:mt-1">
+                        {formatShortDate(selectedDate)}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCloseModal}
+                    className="text-white/80 hover:text-white transition-colors p-1.5 sm:p-2 hover:bg-white/10 rounded-lg"
+                  >
+                    <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                  </button>
                 </div>
-                <div>
-                  <h4 className="text-lg sm:text-xl font-bold text-gray-900">
-                    Time Slots for {formatShortDate(selectedDate)}
-                  </h4>
-                  {doctor.appointment_time_from && doctor.appointment_time_to && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      Available: {formatTime12Hour(doctor.appointment_time_from)} - {formatTime12Hour(doctor.appointment_time_to)}
+                {doctor.appointment_time_from && doctor.appointment_time_to && (
+                  <div className="mt-2 sm:mt-3 flex items-center gap-2 text-blue-100 text-xs sm:text-sm">
+                    <span className="bg-white/20 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
+                      {formatTime12Hour(doctor.appointment_time_from)} - {formatTime12Hour(doctor.appointment_time_to)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-4 sm:p-6 max-h-[50vh] sm:max-h-[60vh] overflow-y-auto">
+                {isSlotTooFarInAdvance(selectedDate) && (
+                  <div className="mb-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-xs sm:text-sm text-red-800 font-medium flex items-center gap-2">
+                      <span className="text-base sm:text-lg">⚠️</span>
+                      Cannot book more than 7 days in advance
                     </p>
-                  )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {(() => {
+                    const availability = getDoctorAvailabilityForDate(doctor, selectedDate);
+                    const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][selectedDate.getDay()];
+
+                    const fallbackSlots =
+                      doctor?.weeklySchedule?.[dayName]?.slots || [];
+
+                    const slots =
+                      Array.isArray(availability?.slots) && availability.slots.length > 0
+                        ? availability.slots
+                        : Array.isArray(fallbackSlots) && fallbackSlots.length > 0
+                          ? fallbackSlots
+                          : [];
+
+                    if (!slots || slots.length === 0) {
+                      return (
+                        <div className="col-span-full text-center py-8 sm:py-12">
+                          <div className="text-3xl sm:text-4xl text-gray-400 mb-2 sm:mb-3">📅</div>
+                          <p className="text-sm sm:text-base text-gray-600 font-medium">No slots available for this date</p>
+                          <p className="text-xs sm:text-sm text-gray-500 mt-1">Please select another date</p>
+                        </div>
+                      );
+                    }
+
+                    return slots.map((slot: any, i: number) => {
+                      const booked = slot.booked || 0;
+                      const total = slot.token
+                        ? parseInt(slot.token)
+                        : doctor.token_limit
+                          ? parseInt(doctor.token_limit)
+                          : 1;
+                      const remaining = Math.max(0, total - booked);
+                      const isFull = remaining === 0;
+
+                      const isPastSlot = isPastSlotForToday(slot.from, selectedDate);
+                      const isTooFarInAdvance = isSlotTooFarInAdvance(selectedDate);
+
+                      let isEnabled = false;
+                      let disableReason = "";
+                      let warningMessage = "";
+
+                      const isStartWithinAllowedTime = (slotStartTime: string) => {
+                        const slotStart = convertToMinutes(slotStartTime);
+                        const fromLimit = doctor?.appointment_time_from
+                          ? convertToMinutes(doctor.appointment_time_from)
+                          : null;
+                        const toLimit = doctor?.appointment_time_to
+                          ? convertToMinutes(doctor.appointment_time_to)
+                          : null;
+
+                        if (slotStart === null || fromLimit === null || toLimit === null) return true;
+                        return slotStart >= fromLimit && slotStart <= toLimit;
+                      };
+
+                      const isEndWithinAllowedTime = (slotEndTime: string) => {
+                        const slotEnd = convertToMinutes(slotEndTime);
+                        const toLimit = doctor?.appointment_time_to
+                          ? convertToMinutes(doctor.appointment_time_to)
+                          : null;
+
+                        if (slotEnd === null || toLimit === null) return true;
+                        return slotEnd <= toLimit;
+                      };
+
+                      const bookingStart = doctor?.appointment_time_from
+                        ? convertToMinutes(doctor.appointment_time_from)
+                        : null;
+                      const bookingEnd = doctor?.appointment_time_to
+                        ? convertToMinutes(doctor.appointment_time_to)
+                        : null;
+
+                      const now = new Date().getHours() * 60 + new Date().getMinutes();
+
+                      const isBookingWindowOpen =
+                        bookingStart !== null &&
+                        bookingEnd !== null &&
+                        now >= bookingStart &&
+                        now <= bookingEnd;
+
+                      if (!isBookingWindowOpen) {
+                        disableReason = `Available ${formatTime12Hour(
+                          doctor.appointment_time_from
+                        )} - ${formatTime12Hour(doctor.appointment_time_to)}`;
+                        isEnabled = false;
+                      } else if (isTooFarInAdvance) {
+                        disableReason = "Cannot book more than 7 days in advance";
+                        isEnabled = false;
+                      } else if (isPastSlot) {
+                        disableReason = "Time has passed";
+                        isEnabled = false;
+                      } else if (isFull) {
+                        disableReason = "Fully booked";
+                        isEnabled = false;
+                      } else {
+                        isEnabled = true;
+                      }
+
+                      if (
+                        !isEndWithinAllowedTime(slot.to) && isStartWithinAllowedTime(slot.from)) {
+                        warningMessage = `⚠️ Ends at ${formatTime12Hour(slot.to)} (closes at ${formatTime12Hour(
+                          doctor.appointment_time_to
+                        )})`;
+                      }
+
+                      const isThisSlotSelected = activeSlot && 
+                        activeSlot.from === slot.from && 
+                        activeSlot.to === slot.to;
+
+                      let slotBgColor = "bg-white";
+                      let borderColor = "border-gray-200";
+                      let statusBgColor = "bg-gray-100";
+                      let statusTextColor = "text-gray-600";
+                      let hoverEffect = "";
+
+                      if (isThisSlotSelected) {
+                        slotBgColor = "bg-blue-50";
+                        borderColor = "border-blue-400 border-2";
+                        statusBgColor = "bg-blue-100";
+                        statusTextColor = "text-blue-900";
+                      } else if (!isEnabled) {
+                        slotBgColor = "bg-gray-50";
+                        borderColor = "border-gray-300";
+                      } else if (isFull) {
+                        slotBgColor = "bg-red-50";
+                        borderColor = "border-red-200";
+                        statusBgColor = "bg-red-100";
+                        statusTextColor = "text-red-900";
+                      } else {
+                        if (remaining > 2) {
+                          slotBgColor = "bg-green-50";
+                          borderColor = "border-green-200";
+                          statusBgColor = "bg-green-100";
+                          statusTextColor = "text-green-900";
+                          hoverEffect = "hover:shadow-lg hover:border-green-400 hover:scale-[1.02]";
+                        } else if (remaining === 2) {
+                          slotBgColor = "bg-amber-50";
+                          borderColor = "border-amber-200";
+                          statusBgColor = "bg-amber-100";
+                          statusTextColor = "text-amber-900";
+                          hoverEffect = "hover:shadow-lg hover:border-amber-400 hover:scale-[1.02]";
+                        } else {
+                          slotBgColor = "bg-orange-50";
+                          borderColor = "border-orange-200";
+                          statusBgColor = "bg-orange-100";
+                          statusTextColor = "text-orange-900";
+                          hoverEffect = "hover:shadow-lg hover:border-orange-400 hover:scale-[1.02]";
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            if (isEnabled) {
+                              handleSlotSelect(slot);
+                            }
+                          }}
+                          disabled={!isEnabled}
+                          className={`
+                            relative p-3 sm:p-4 rounded-xl border text-center transition-all duration-200
+                            ${slotBgColor} ${borderColor}
+                            ${isEnabled && !isThisSlotSelected ? hoverEffect : ""}
+                            ${isThisSlotSelected ? "ring-2 ring-blue-500 ring-offset-2" : ""}
+                            ${warningMessage ? "border-dashed border-yellow-300" : ""}
+                            group w-full
+                          `}
+                        >
+                          <div className="text-base sm:text-lg font-bold text-gray-900">
+                            {formatTime12Hour(slot.from)}
+                          </div>
+
+                          <div className="text-xs sm:text-sm text-gray-600">
+                            to {formatTime12Hour(slot.to)}
+                          </div>
+
+                          <div
+                            className={`mt-2 sm:mt-3 text-xs sm:text-sm font-semibold px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg ${statusBgColor} ${statusTextColor}`}
+                          >
+                            {!isEnabled
+                              ? disableReason
+                              : isFull
+                                ? "FULLY BOOKED"
+                                : `${remaining}/${total} tokens`}
+                          </div>
+
+                          {warningMessage && (
+                            <div className="mt-2 text-xs text-yellow-600 italic">{warningMessage}</div>
+                          )}
+
+                          {isEnabled && !isFull && !isThisSlotSelected && (
+                            <>
+                              <div className="absolute top-2 right-2">
+                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-green-500 animate-pulse shadow-sm"></div>
+                              </div>
+
+                              <div className="mt-2 sm:mt-3 text-xs sm:text-sm text-green-700 font-medium flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                Select <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </div>
+                            </>
+                          )}
+
+                          {isThisSlotSelected && (
+                            <div className="mt-2 sm:mt-3 text-xs sm:text-sm text-blue-700 font-medium">
+                              ✓ Selected
+                            </div>
+                          )}
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
-              {isSlotTooFarInAdvance(selectedDate) && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-800 font-medium">
-                    ⚠️ Cannot book more than 7 days in advance
-                  </p>
-                </div>
-              )}
-            </div>
 
-            <button
-              onClick={() => setSelectedDate(null)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-white rounded-lg border border-gray-300"
-            >
-              Clear
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-
-            {(() => {
-              const availability = getDoctorAvailabilityForDate(doctor, selectedDate);
-              const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][selectedDate.getDay()];
-
-              const fallbackSlots =
-                doctor?.weeklySchedule?.[dayName]?.slots || [];
-
-              const slots =
-                Array.isArray(availability?.slots) && availability.slots.length > 0
-                  ? availability.slots
-                  : Array.isArray(fallbackSlots) && fallbackSlots.length > 0
-                    ? fallbackSlots
-                    : [];
-
-
-
-              if (!slots || slots.length === 0) {
-                return (
-                  <div className="col-span-full text-center py-6 text-gray-500">
-                    No slots available for this date
-                  </div>
-                );
-              }
-
-              return slots.map((slot: any, i: number) => {
-                const booked = slot.booked || 0;
-                const total = slot.token
-                  ? parseInt(slot.token)
-                  : doctor.token_limit
-                    ? parseInt(doctor.token_limit)
-                    : 1;
-                const remaining = Math.max(0, total - booked);
-                const isFull = remaining === 0;
-
-                const isPastSlot = isPastSlotForToday(slot.from, selectedDate);
-
-                const isTooFarInAdvance = isSlotTooFarInAdvance(selectedDate);
-
-                let isEnabled = false;
-                let disableReason = "";
-                let warningMessage = "";
-
-                const isStartWithinAllowedTime = (slotStartTime: string) => {
-                  const slotStart = convertToMinutes(slotStartTime);
-                  const fromLimit = doctor?.appointment_time_from
-                    ? convertToMinutes(doctor.appointment_time_from)
-                    : null;
-                  const toLimit = doctor?.appointment_time_to
-                    ? convertToMinutes(doctor.appointment_time_to)
-                    : null;
-
-                  if (slotStart === null || fromLimit === null || toLimit === null) return true;
-                  return slotStart >= fromLimit && slotStart <= toLimit;
-
-                };
-
-                const isEndWithinAllowedTime = (slotEndTime: string) => {
-                  const slotEnd = convertToMinutes(slotEndTime);
-                  const toLimit = doctor?.appointment_time_to
-                    ? convertToMinutes(doctor.appointment_time_to)
-                    : null;
-
-                  if (slotEnd === null || toLimit === null) return true;
-                  return slotEnd <= toLimit;
-
-                };
-
-                const bookingStart = doctor?.appointment_time_from
-                  ? convertToMinutes(doctor.appointment_time_from)
-                  : null;
-                const bookingEnd = doctor?.appointment_time_to
-                  ? convertToMinutes(doctor.appointment_time_to)
-                  : null;
-
-                const now = new Date().getHours() * 60 + new Date().getMinutes();
-
-                const isBookingWindowOpen =
-                  bookingStart !== null &&
-                  bookingEnd !== null &&
-                  now >= bookingStart &&
-                  now <= bookingEnd;
-
-                if (!isBookingWindowOpen) {
-                  disableReason = `Available ${formatTime12Hour(
-                    doctor.appointment_time_from
-                  )} - ${formatTime12Hour(doctor.appointment_time_to)}`;
-                  isEnabled = false;
-                } else if (isTooFarInAdvance) {
-                  disableReason = "Cannot book more than 7 days in advance";
-                  isEnabled = false;
-                } else if (isPastSlot) {
-                  disableReason = "Time has passed";
-                  isEnabled = false;
-                } else if (isFull) {
-                  disableReason = "Fully booked";
-                  isEnabled = false;
-                } else {
-                  isEnabled = true;
-                }
-
-                if (
-                  !isEndWithinAllowedTime(slot.to) && isStartWithinAllowedTime(slot.from)) {
-                  warningMessage = `⚠️ Ends at ${formatTime12Hour(slot.to)} (closes at ${formatTime12Hour(
-                    doctor.appointment_time_to
-                  )})`;
-                }
-
-                let slotBgColor = "bg-white";
-                let borderColor = "border-gray-200";
-                let statusBgColor = "bg-gray-100";
-                let statusTextColor = "text-gray-600";
-
-                if (!isEnabled) {
-                  slotBgColor = "bg-gray-50";
-                  borderColor = "border-gray-300";
-                } else if (isFull) {
-                  slotBgColor = "bg-red-50";
-                  borderColor = "border-red-200";
-                  statusBgColor = "bg-red-100";
-                  statusTextColor = "text-red-900";
-                } else {
-                  if (remaining > 2) {
-                    slotBgColor = "bg-green-50";
-                    borderColor = "border-green-200";
-                    statusBgColor = "bg-green-100";
-                    statusTextColor = "text-green-900";
-                  } else if (remaining === 2) {
-                    slotBgColor = "bg-amber-50";
-                    borderColor = "border-amber-200";
-                    statusBgColor = "bg-amber-100";
-                    statusTextColor = "text-amber-900";
-                  } else {
-                    slotBgColor = "bg-orange-50";
-                    borderColor = "border-orange-200";
-                    statusBgColor = "bg-orange-100";
-                    statusTextColor = "text-orange-900";
-                  }
-                }
-
-                return (
+              {/* Modal Footer */}
+              <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200">
+                <div className="flex justify-end">
                   <button
-                    key={i}
-                    onClick={() => isEnabled && handleSlotClickDirect(doctor, selectedDate, slot)}
-                    disabled={!isEnabled}
-                    className={`relative p-3 sm:p-4 rounded-xl border text-center transition-all
-            ${slotBgColor} ${borderColor}
-            ${isEnabled
-                        ? "hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:border-green-400"
-                        : "cursor-not-allowed opacity-70"
-                      }
-            ${warningMessage ? "border-dashed border-yellow-300" : ""}
-          `}
+                    onClick={handleCloseModal}
+                    className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white hover:bg-gray-50 rounded-lg border border-gray-300 transition-colors"
                   >
-                    <div className="text-base sm:text-lg font-bold text-gray-900">
-                      {formatTime12Hour(slot.from)}
-                    </div>
-
-                    <div className="text-xs sm:text-sm text-gray-600">
-                      to {formatTime12Hour(slot.to)}
-                    </div>
-
-                    <div
-                      className={`mt-2 sm:mt-3 text-xs sm:text-sm font-semibold px-3 py-2 rounded-lg ${statusBgColor} ${statusTextColor}`}
-                    >
-                      {!isEnabled
-                        ? disableReason
-                        : isFull
-                          ? "FULLY BOOKED"
-                          : `${remaining}/${total} tokens`}
-                    </div>
-
-                    {warningMessage && (
-                      <div className="mt-2 text-xs text-yellow-600 italic">{warningMessage}</div>
-                    )}
-
-                    {isEnabled && !isFull && (
-                      <>
-                        <div className="absolute top-2 right-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-sm"></div>
-                        </div>
-
-                        <div className="mt-2 text-xs sm:text-sm text-green-700 font-medium flex items-center justify-center gap-1">
-                          Book Now <ChevronRight className="h-4 w-4" />
-                        </div>
-                      </>
-                    )}
+                    Close
                   </button>
-                );
-              });
-            })()}
-
+                </div>
+              </div>
+            </div>
           </div>
-
         </div>
       )}
+
+      {/* Add animation styles */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
