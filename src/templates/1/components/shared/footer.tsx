@@ -3,7 +3,7 @@
 import Link from "@/link";
 import NextLink from "next/link";
 import { Button } from "../ui/button";
-import { ChevronRight, Mail, MapPin, Phone } from "lucide-react";
+import { ChevronRight, Mail, MapPin, Phone, FileText } from "lucide-react";
 import { FooterProps } from "@/types";
 import Logo from "@/components/logo";
 import { uploadsUrl } from "@/config";
@@ -12,6 +12,7 @@ import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getFooterData, SiteSettings } from "@/lib/api/footer";
+import { getWebsitePages } from "@/lib/api/website-pages";
 
 interface SocialLink {
   platform: string;
@@ -24,6 +25,14 @@ interface QuickLink {
   href: string;
 }
 
+interface Page {
+  id: number;
+  pageId: string;
+  name: string;
+  slug: string;
+  content: string;
+}
+
 const Footer = ({ user, categories }: FooterProps) => {
   const params = useParams();
   const slug = params.site as string;
@@ -31,6 +40,7 @@ const Footer = ({ user, categories }: FooterProps) => {
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
   const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
   const [disclaimer, setDisclaimer] = useState<string>("");
   const [copyright, setCopyright] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -40,13 +50,23 @@ const Footer = ({ user, categories }: FooterProps) => {
       if (!slug) return;
       
       try {
-        const response = await getFooterData(slug);
-        if (response.success && response.data) {
-          setSiteSettings(response.data.siteSettings);
-          setSocialLinks(response.data.socialLinks);
-          setQuickLinks(response.data.quickLinks);
-          setDisclaimer(response.data.disclaimer);
-          setCopyright(response.data.copyright);
+        // Fetch both footer data and pages
+        const [footerResponse, pagesResponse] = await Promise.all([
+          getFooterData(slug),
+          getWebsitePages(slug)
+        ]);
+        
+        if (footerResponse.success && footerResponse.data) {
+          setSiteSettings(footerResponse.data.siteSettings);
+          setSocialLinks(footerResponse.data.socialLinks);
+          setQuickLinks(footerResponse.data.quickLinks);
+          setDisclaimer(footerResponse.data.disclaimer);
+          setCopyright(footerResponse.data.copyright);
+        }
+
+        // Set pages if available
+        if (pagesResponse.success && pagesResponse.data && pagesResponse.data.length > 0) {
+          setPages(pagesResponse.data);
         }
       } catch (error) {
         console.error("Failed to fetch footer data:", error);
@@ -60,6 +80,27 @@ const Footer = ({ user, categories }: FooterProps) => {
 
   // Fallback to props if API fails
   const displaySettings = siteSettings || user?.siteSettings?.[0] || {};
+
+  // Combine quick links and pages
+  const allQuickLinks = [...quickLinks];
+  
+  // Add pages to quick links if they exist
+  if (pages.length > 0) {
+    pages.forEach(page => {
+      // Check if page with similar name doesn't already exist in quickLinks
+      const exists = allQuickLinks.some(link => 
+        link.label.toLowerCase() === page.name.toLowerCase() || 
+        link.href === `/${slug}/${page.slug}`
+      );
+      
+      if (!exists) {
+        allQuickLinks.push({
+          label: page.name,
+          href: `/${slug}/${page.slug}`
+        });
+      }
+    });
+  }
 
   return (
     <footer className="bg-white py-20">
@@ -98,16 +139,24 @@ const Footer = ({ user, categories }: FooterProps) => {
           <div className="max-w-[300px]">
             <h3 className="font-bold text-2xl mb-5">Quick Links</h3>
             <ul className="space-y-4">
-              {quickLinks.map((item, index) => (
+              {allQuickLinks.map((item, index) => (
                 <li key={index}>
                   <NextLink
                     href={item.href}
-                    className="hover:underline text-gray-500"
+                    target={item.href.startsWith('http') ? '_blank' : undefined}
+                    rel={item.href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                    className="hover:underline text-gray-500 flex items-center gap-2"
                   >
+                    <FileText className="w-4 h-4 text-gray-400" />
                     {item.label}
                   </NextLink>
                 </li>
               ))}
+
+              {/* Show message if no links */}
+              {allQuickLinks.length === 0 && (
+                <li className="text-gray-400 text-sm">No quick links available</li>
+              )}
             </ul>
           </div>
 
@@ -137,7 +186,7 @@ const Footer = ({ user, categories }: FooterProps) => {
               )}
             </ul>
 
-            {/* Social Links - FIXED: Moved ul outside and properly structured */}
+            {/* Social Links */}
             {socialLinks.filter((item) => item.url).length > 0 && (
               <ul className="flex items-center gap-6 mt-10">
                 {socialLinks
