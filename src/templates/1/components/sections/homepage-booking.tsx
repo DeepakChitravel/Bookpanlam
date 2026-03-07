@@ -11,14 +11,14 @@ import { toast } from "sonner";
 import Image from 'next/image'
 
 import { getEnabledPaymentGateways, getAvailableDaysCount, getNextAvailableSlot, formatShortDate } from "./Doctor/utils";
-import { 
-  Loader2, 
-  AlertCircle, 
-  Calendar, 
-  Clock, 
-  User, 
-  CreditCard, 
-  Star, 
+import {
+  Loader2,
+  AlertCircle,
+  Calendar,
+  Clock,
+  User,
+  CreditCard,
+  Star,
   Award,
   MapPin,
   GraduationCap,
@@ -80,8 +80,8 @@ const StatsCards = ({ doctors, siteSettings }: any) => {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
       {stats.map((stat, index) => (
-        <div 
-          key={index} 
+        <div
+          key={index}
           className="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1"
         >
           <div className="flex items-center gap-2 sm:gap-3">
@@ -287,30 +287,50 @@ const HomepageBooking = ({ userId, site }: HomepageBookingProps) => {
 
     fetchData();
   }, [userId]);
+  const handleSlotClick = (doctor: any, date: Date, slot: any) => {
+    if (!user || !user.customer_id) {
+      toast.error("Please login to book appointment", {
+        id: "login-required-doctor",
+        duration: 2000,
+        position: "top-center",
+        className: "responsive-toast",
+        style: {
+          marginTop: "45vh",
+          padding: "clamp(14px, 4vw, 20px) clamp(40px, 8vw, 48px) clamp(14px, 4vw, 20px) clamp(20px, 5vw, 32px)",
+          fontSize: "clamp(14px, 4vw, 18px)",
+          fontWeight: "500",
+          borderRadius: "clamp(10px, 3vw, 16px)",
+          boxShadow: "0 15px 30px -10px rgba(220, 38, 38, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+          backgroundColor: "#fee2e2",
+          color: "#b91c1c",
+          border: "1px solid #fecaca",
+          maxWidth: "min(450px, 90vw)",
+          width: "auto",
+          minWidth: "min(320px, 85vw)",
+          backdropFilter: "blur(4px)",
+          letterSpacing: "0.3px",
+          position: "relative",
+        },
+        closeButton: true,
+        // Remove closeButtonStyles and use CSS class instead
+      });
+      return;
+    }
 
-const handleSlotClick = (doctor: any, date: Date, slot: any) => {
-  if (!user || !user.customer_id) {
-    toast.error("Please login to book appointment", {
-      id: "login-required-doctor",
-      duration: 3000,
-    });
-    return;
-  }
+    console.log("🏠 Slot clicked:", slot);
 
-  console.log("🏠 Slot clicked:", slot);
+    setSelectedDoctor(doctor);
+    setSelectedDate(date);
+    setSelectedSlot(slot);
+    setShowBookingForm(true);
 
-  setSelectedDoctor(doctor);
-  setSelectedDate(date);
-  setSelectedSlot(slot);
-  setShowBookingForm(true);
-
-  setTimeout(() => {
-    document.getElementById('booking-form-section')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
-  }, 100);
-};
+    setTimeout(() => {
+      document.getElementById('booking-form-section')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }, 100);
+  };
   const handleCloseBookingForm = () => {
     setShowBookingForm(false);
     setSelectedSlot(null);
@@ -330,7 +350,7 @@ const handleSlotClick = (doctor: any, date: Date, slot: any) => {
     setExpandedDoctorId(doctor.id);
     const date = new Date(nextSlot.date);
     setSelectedDate(date);
-    
+
     setTimeout(() => {
       document.getElementById(`doctor-${doctor.id}`)?.scrollIntoView({
         behavior: 'smooth',
@@ -406,9 +426,8 @@ const handleSlotClick = (doctor: any, date: Date, slot: any) => {
                 <div
                   key={doctor.id}
                   id={`doctor-${doctor.id}`}
-                  className={`bg-white rounded-xl sm:rounded-2xl border shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl ${
-                    isExpanded ? 'border-blue-200 ring-2 ring-blue-100' : 'border-gray-200'
-                  }`}
+                  className={`bg-white rounded-xl sm:rounded-2xl border shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl ${isExpanded ? 'border-blue-200 ring-2 ring-blue-100' : 'border-gray-200'
+                    }`}
                 >
                   {/* Main Card Content - Responsive */}
                   <div className="p-4 sm:p-6">
@@ -417,7 +436,7 @@ const handleSlotClick = (doctor: any, date: Date, slot: any) => {
                       <div className="relative flex-shrink-0 mx-auto sm:mx-0">
                         <div className="relative w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-xl sm:rounded-2xl overflow-hidden border-4 border-white shadow-xl">
                           <Image
-                            src={`${uploadsUrl}/${doctor.doctorImage}`}
+                            src={`${uploadsUrl}/${doctor.doctorImage.replace("sellers/", "")}`}
                             alt={doctor.name}
                             fill
                             className="object-cover"

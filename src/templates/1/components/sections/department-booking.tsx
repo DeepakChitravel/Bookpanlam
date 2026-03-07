@@ -282,7 +282,27 @@ const handleSlotClick = (department: any, date: Date, slot: any) => {
   if (!user || !user.customer_id) {
     toast.error("Please login to book appointment", {
       id: "login-required-toast",
-      duration: 3000,
+      duration: 5000,
+      position: "top-center",
+      className: "responsive-toast",
+      style: {
+        marginTop: "45vh",
+        padding: "clamp(14px, 4vw, 20px) clamp(40px, 8vw, 48px) clamp(14px, 4vw, 20px) clamp(20px, 5vw, 32px)",
+        fontSize: "clamp(14px, 4vw, 18px)",
+        fontWeight: "500",
+        borderRadius: "clamp(10px, 3vw, 16px)",
+        boxShadow: "0 15px 30px -10px rgba(220, 38, 38, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+        backgroundColor: "#fee2e2",
+        color: "#b91c1c",
+        border: "1px solid #fecaca",
+        maxWidth: "min(450px, 90vw)",
+        width: "auto",
+        minWidth: "min(320px, 85vw)",
+        backdropFilter: "blur(4px)",
+        letterSpacing: "0.3px",
+        position: "relative",
+      },
+      closeButton: true,
     });
     return;
   }
